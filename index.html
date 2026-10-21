@@ -1,0 +1,174 @@
+<!DOCTYPE html>
+<html lang="vi">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Kho Sim Số Đẹp VIP</title>
+    <style>
+        /* CSS: Giao diện và màu sắc */
+        body { font-family: Arial, sans-serif; background-color: #f4f7f6; margin: 0; padding: 0; }
+        .header { background: linear-gradient(135deg, #1e3c72 0%, #2a5298 100%); color: white; padding: 20px; text-align: center; }
+        .header h1 { margin: 0; font-size: 28px; }
+        .header p { margin: 5px 0 0; font-size: 14px; opacity: 0.8; }
+        
+        .container { max-width: 1000px; margin: 20px auto; padding: 0 15px; }
+        
+        /* Khu vực tìm kiếm và lọc */
+        .controls { display: flex; gap: 10px; margin-bottom: 20px; flex-wrap: wrap; }
+        .controls input, .controls select { 
+            padding: 12px; font-size: 16px; border: 1px solid #ccc; border-radius: 8px; flex: 1; outline: none;
+        }
+        .controls input:focus, .controls select:focus { border-color: #2a5298; box-shadow: 0 0 5px rgba(42,82,152,0.3); }
+
+        /* Lưới danh sách sim */
+        .sim-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(280px, 1fr)); gap: 15px; }
+        
+        /* Thẻ sim đơn */
+        .sim-card { background: white; padding: 20px; border-radius: 10px; box-shadow: 0 2px 10px rgba(0,0,0,0.05); text-align: center; transition: transform 0.2s; border-bottom: 4px solid #2a5298; }
+        .sim-card:hover { transform: translateY(-5px); box-shadow: 0 5px 15px rgba(0,0,0,0.1); }
+        .sim-number { font-size: 24px; font-weight: bold; color: #d32f2f; margin-bottom: 5px; letter-spacing: 1px; }
+        .sim-carrier { display: inline-block; padding: 4px 10px; background: #e0e0e0; border-radius: 20px; font-size: 12px; font-weight: bold; margin-bottom: 10px; }
+        .sim-price { font-size: 18px; color: #388e3c; font-weight: bold; margin-bottom: 15px; }
+        
+        /* Trạng thái */
+        .status-sold { color: #888; text-decoration: line-through; }
+        .tag-sold { background: #ffebee; color: #c62828; }
+        .tag-available { background: #e8f5e9; color: #2e7d32; }
+
+        /* Nút liên hệ */
+        .btn-buy { display: inline-block; text-decoration: none; background: #25D366; color: white; padding: 10px 20px; border-radius: 5px; font-weight: bold; width: 80%; transition: background 0.3s; }
+        .btn-buy:hover { background: #1ebe57; }
+        .btn-disabled { background: #ccc; cursor: not-allowed; pointer-events: none; }
+
+        .loading { text-align: center; padding: 50px; font-size: 18px; color: #666; }
+    </style>
+</head>
+<body>
+
+    <div class="header">
+        <h1>Khánh Sim VIP</h1>
+        <p>Uy tín - Nhanh chóng - Giao dịch toàn quốc</p>
+    </div>
+
+    <div class="container">
+        <!-- Bộ lọc và Tìm kiếm -->
+        <div class="controls">
+            <input type="text" id="searchInput" placeholder="Nhập số cần tìm (VD: 999, 098)...">
+            <select id="carrierFilter">
+                <option value="all">-- Tất cả nhà mạng --</option>
+                <option value="viettel">Viettel</option>
+                <option value="vinaphone">Vinaphone</option>
+                <option value="mobifone">Mobifone</option>
+                <option value="wintel">Wintel</option>
+                <option value="vietnamobile">Vietnamobile</option>
+                <option value="itel">iTel</option>
+            </select>
+        </div>
+
+        <!-- Nơi hiển thị danh sách Sim -->
+        <div id="simList" class="sim-grid">
+            <div class="loading">⏳ Đang tải dữ liệu sim mới nhất từ hệ thống...</div>
+        </div>
+    </div>
+
+    <script>
+        /* 
+        ==================================================
+        JAVASCRIPT: XỬ LÝ LẤY DỮ LIỆU TỪ GOOGLE SHEETS
+        ==================================================
+        */
+        
+        // 1. THAY ID BẢNG TÍNH CỦA BẠN VÀO ĐÂY (Nằm giữa /d/ và /edit trên link web)
+        const SHEET_ID = '1SToo9h3IDeG578P9bWfmsh7ubvHNWW53WMqB8wdzVKg'; 
+        
+        // Cấu trúc URL API của Google để trả về dữ liệu dạng JSON
+        const SHEET_URL = `https://docs.google.com/spreadsheets/d/${SHEET_ID}/gviz/tq?tqx=out:json`;
+
+        let simData = []; // Mảng chứa dữ liệu sim sau khi tải về
+
+        // Hàm Fetch API để lấy dữ liệu
+        async function fetchSimData() {
+            try {
+                const response = await fetch(SHEET_URL);
+                const text = await response.text();
+                
+                // Google trả về 1 chuỗi text dạng hàm JS, ta cần cắt xén để lấy đúng chuẩn JSON
+                const jsonString = text.substring(text.indexOf('{'), text.lastIndexOf('}') + 1);
+                const data = JSON.parse(jsonString);
+
+                // Chuyển đổi dữ liệu thô của Google thành Mảng dễ dùng
+                // data.table.rows chứa các hàng dữ liệu
+                simData = data.table.rows.map(row => {
+                    return {
+                        number: row.c[0] ? row.c[0].v : '',       // Cột A: Số sim
+                        carrier: row.c[1] ? row.c[1].v : '',      // Cột B: Nhà mạng
+                        price: row.c[2] ? row.c[2].v : 'Liên hệ', // Cột C: Giá
+                        status: row.c[3] ? row.c[3].v : 'Còn hàng'// Cột D: Trạng thái
+                    };
+                }).filter(sim => sim.number !== ''); // Lọc bỏ các hàng trống
+
+                renderSims(simData); // Gọi hàm vẽ giao diện
+            } catch (error) {
+                document.getElementById('simList').innerHTML = `<div class="loading" style="color:red"> Lỗi kết nối dữ liệu. Vui lòng kiểm tra lại SHEET ID hoặc Quyền chia sẻ của Google Sheets.</div>`;
+                console.error("Lỗi fetch dữ liệu:", error);
+            }
+        }
+
+        // Hàm hiển thị sim lên giao diện
+        function renderSims(dataToRender) {
+            const listElement = document.getElementById('simList');
+            listElement.innerHTML = ''; // Xóa chữ "Đang tải..."
+
+            if(dataToRender.length === 0) {
+                listElement.innerHTML = `<div class="loading">Không tìm thấy số sim nào phù hợp!</div>`;
+                return;
+            }
+
+            dataToRender.forEach(sim => {
+                const isSold = sim.status.toLowerCase().includes('đã bán');
+                const btnClass = isSold ? 'btn-buy btn-disabled' : 'btn-buy';
+                const btnText = isSold ? 'Đã bán' : 'Chat Zalo Mua Ngay';
+                
+                // Đổi SĐT của bạn ở link Zalo (thay 0123456789)
+                const zaloLink = `https://zalo.me/0965286688?text=Tôi muốn mua sim ${sim.number}`; 
+                
+                const simHtml = `
+                    <div class="sim-card">
+                        <div class="sim-carrier tag-${isSold ? 'sold' : 'available'}">${sim.carrier}</div>
+                        <div class="sim-number ${isSold ? 'status-sold' : ''}">${sim.number}</div>
+                        <div class="sim-price">${sim.price}</div>
+                        <a href="${isSold ? '#' : zaloLink}" target="_blank" class="${btnClass}">${btnText}</a>
+                    </div>
+                `;
+                listElement.innerHTML += simHtml;
+            });
+        }
+
+        // Hàm xử lý khi người dùng gõ tìm kiếm hoặc đổi bộ lọc
+        function filterData() {
+            const searchText = document.getElementById('searchInput').value.toLowerCase().trim();
+            const filterCarrier = document.getElementById('carrierFilter').value.toLowerCase();
+
+            const filteredData = simData.filter(sim => {
+                // Xóa dấu chấm hoặc khoảng trắng ở số điện thoại để tìm cho dễ
+                const cleanNumber = sim.number.replace(/[\.\s]/g, ""); 
+                const matchSearch = cleanNumber.includes(searchText) || sim.number.toLowerCase().includes(searchText);
+                
+                const matchCarrier = (filterCarrier === 'all') || (sim.carrier.toLowerCase().includes(filterCarrier));
+
+                return matchSearch && matchCarrier;
+            });
+
+            renderSims(filteredData);
+        }
+
+        // Bắt sự kiện khi gõ phím vào ô tìm kiếm hoặc chọn dropdown
+        document.getElementById('searchInput').addEventListener('input', filterData);
+        document.getElementById('carrierFilter').addEventListener('change', filterData);
+
+        // Chạy hàm lấy dữ liệu ngay khi web load xong
+        window.onload = fetchSimData;
+
+    </script>
+</body>
+</html>
