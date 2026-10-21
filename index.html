@@ -41,6 +41,7 @@
         .btn-disabled { background: #ccc; cursor: not-allowed; pointer-events: none; }
 
         .loading { text-align: center; padding: 50px; font-size: 18px; color: #666; }
+        
         /* Chân trang (Footer) */
         .footer { 
             text-align: center; 
@@ -87,52 +88,39 @@
     </div>
 
     <script>
-        /* 
-        ==================================================
-        JAVASCRIPT: XỬ LÝ LẤY DỮ LIỆU TỪ GOOGLE SHEETS
-        ==================================================
-        */
-        
-        // 1. THAY ID BẢNG TÍNH CỦA BẠN VÀO ĐÂY (Nằm giữa /d/ và /edit trên link web)
         const SHEET_ID = '1SToo9h3IDeG578P9bWfmsh7ubvHNWW53WMqB8wdzVKg'; 
-        
-        // Cấu trúc URL API của Google để trả về dữ liệu dạng JSON
         const SHEET_URL = `https://docs.google.com/spreadsheets/d/${SHEET_ID}/gviz/tq?tqx=out:json`;
 
-        let simData = []; // Mảng chứa dữ liệu sim sau khi tải về
+        let simData = []; 
 
-        // Hàm Fetch API để lấy dữ liệu
         async function fetchSimData() {
             try {
                 const response = await fetch(SHEET_URL);
                 const text = await response.text();
                 
-                // Google trả về 1 chuỗi text dạng hàm JS, ta cần cắt xén để lấy đúng chuẩn JSON
                 const jsonString = text.substring(text.indexOf('{'), text.lastIndexOf('}') + 1);
                 const data = JSON.parse(jsonString);
 
-                // Chuyển đổi dữ liệu thô của Google thành Mảng dễ dùng
-                // data.table.rows chứa các hàng dữ liệu
+                // ĐOẠN CODE NÀY ĐÃ ĐƯỢC SỬA LỖI TRỐNG (NULL)
                 simData = data.table.rows.map(row => {
                     return {
-                        number: row.c[0] ? row.c[0].v : '',       // Cột A: Số sim
-                        carrier: row.c[1] ? row.c[1].v : '',      // Cột B: Nhà mạng
-                        price: row.c[2] ? row.c[2].v : 'Liên hệ', // Cột C: Giá
-                        status: row.c[3] ? row.c[3].v : 'Còn hàng'// Cột D: Trạng thái
+                        number: (row.c[0] && row.c[0].v !== null) ? String(row.c[0].v) : '',
+                        carrier: (row.c[1] && row.c[1].v !== null) ? String(row.c[1].v) : '',
+                        price: (row.c[2] && row.c[2].v !== null) ? String(row.c[2].v) : 'Liên hệ',
+                        status: (row.c[3] && row.c[3].v !== null) ? String(row.c[3].v) : 'Còn hàng'
                     };
-                }).filter(sim => sim.number !== ''); // Lọc bỏ các hàng trống
+                }).filter(sim => sim.number !== ''); 
 
-                renderSims(simData); // Gọi hàm vẽ giao diện
+                renderSims(simData); 
             } catch (error) {
                 document.getElementById('simList').innerHTML = `<div class="loading" style="color:red"> Lỗi kết nối dữ liệu. Vui lòng kiểm tra lại SHEET ID hoặc Quyền chia sẻ của Google Sheets.</div>`;
                 console.error("Lỗi fetch dữ liệu:", error);
             }
         }
 
-        // Hàm hiển thị sim lên giao diện
         function renderSims(dataToRender) {
             const listElement = document.getElementById('simList');
-            listElement.innerHTML = ''; // Xóa chữ "Đang tải..."
+            listElement.innerHTML = ''; 
 
             if(dataToRender.length === 0) {
                 listElement.innerHTML = `<div class="loading">Không tìm thấy số sim nào phù hợp!</div>`;
@@ -144,7 +132,6 @@
                 const btnClass = isSold ? 'btn-buy btn-disabled' : 'btn-buy';
                 const btnText = isSold ? 'Đã bán' : 'Chat Zalo Mua Ngay';
                 
-                // Đổi SĐT của bạn ở link Zalo (thay 0123456789)
                 const zaloLink = `https://zalo.me/0965286688?text=Tôi muốn mua sim ${sim.number}`; 
                 
                 const simHtml = `
@@ -159,13 +146,11 @@
             });
         }
 
-        // Hàm xử lý khi người dùng gõ tìm kiếm hoặc đổi bộ lọc
         function filterData() {
             const searchText = document.getElementById('searchInput').value.toLowerCase().trim();
             const filterCarrier = document.getElementById('carrierFilter').value.toLowerCase();
 
             const filteredData = simData.filter(sim => {
-                // Xóa dấu chấm hoặc khoảng trắng ở số điện thoại để tìm cho dễ
                 const cleanNumber = sim.number.replace(/[\.\s]/g, ""); 
                 const matchSearch = cleanNumber.includes(searchText) || sim.number.toLowerCase().includes(searchText);
                 
@@ -177,16 +162,15 @@
             renderSims(filteredData);
         }
 
-        // Bắt sự kiện khi gõ phím vào ô tìm kiếm hoặc chọn dropdown
         document.getElementById('searchInput').addEventListener('input', filterData);
         document.getElementById('carrierFilter').addEventListener('change', filterData);
 
-        // Chạy hàm lấy dữ liệu ngay khi web load xong
         window.onload = fetchSimData;
-
     </script>
+
     <div class="footer">
         Liên hệ hotline: <a href="tel:0965286688">0965.28.66.88</a>
     </div>
+
 </body>
 </html>
