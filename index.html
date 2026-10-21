@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Kho Sim Số Đẹp VIP</title>
+    <title>Kho Sim VIP - Đã cập nhật</title>
     <style>
         body { font-family: Arial, sans-serif; background-color: #f4f7f6; margin: 0; padding: 0; }
         .header { background: linear-gradient(135deg, #1e3c72 0%, #2a5298 100%); color: white; padding: 20px; text-align: center; }
@@ -93,29 +93,36 @@
                 const data = JSON.parse(jsonString);
 
                 simData = data.table.rows.map(row => {
-                    // --- XỬ LÝ LẠI TOÀN BỘ GIÁ TIỀN ---
+                    // --- CÔNG THỨC ÉP GIÁ TIỀN CHUẨN 100% ---
+                    let priceVal = row.c[2] ? row.c[2].v : null;
                     let displayPrice = 'Liên hệ';
-                    if (row.c[2] && row.c[2].v !== null && row.c[2].v !== '') {
-                        displayPrice = String(row.c[2].v).trim();
-                    }
-
-                    // Nếu giá khác chữ "Liên hệ", tiến hành phân tách và thêm VNĐ
-                    if (displayPrice.toLowerCase() !== 'liên hệ') {
-                        // Cắt bỏ hết khoảng trắng, dấu chấm, phẩy hiện có
-                        let cleanNumber = displayPrice.replace(/[.,\s]/g, '');
+                    
+                    if (priceVal !== null && priceVal !== '') {
+                        let strVal = String(priceVal).trim();
+                        let lowerVal = strVal.toLowerCase();
                         
-                        // Nếu toàn bộ là các con số (VD: 5000000)
-                        if (/^\d+$/.test(cleanNumber)) {
-                            displayPrice = Number(cleanNumber).toLocaleString('vi-VN');
-                        }
-
-                        // Thêm chữ VNĐ nếu chưa có
-                        let lowerPrice = displayPrice.toLowerCase();
-                        if (!lowerPrice.includes('đ') && !lowerPrice.includes('vnđ')) {
-                            displayPrice += ' VNĐ';
+                        if (lowerVal === 'liên hệ') {
+                            displayPrice = 'Liên hệ';
+                        } else {
+                            // Rút trích chỉ lấy các con số
+                            let onlyNumbers = strVal.replace(/\D/g, ''); 
+                            // Xóa các dấu chấm, phẩy, khoảng trắng để kiểm tra
+                            let cleanStr = strVal.replace(/[.,\s]/g, '');
+                            
+                            // Nếu dữ liệu nhập vào bản chất chỉ là số
+                            if (onlyNumbers.length > 0 && onlyNumbers === cleanStr) {
+                                // Tự động chèn dấu chấm (.) chuẩn Việt Nam
+                                displayPrice = onlyNumbers.replace(/\B(?=(\d{3})+(?!\d))/g, ".") + ' VNĐ';
+                            } else {
+                                // Nếu có nhập chữ (VD: "5 Triệu") thì giữ nguyên
+                                displayPrice = strVal;
+                                if (!lowerVal.includes('đ') && !lowerVal.includes('vnđ')) {
+                                    displayPrice += ' VNĐ';
+                                }
+                            }
                         }
                     }
-                    // ------------------------------------
+                    // ----------------------------------------
 
                     return {
                         number: (row.c[0] && row.c[0].v !== null) ? String(row.c[0].v) : '',
