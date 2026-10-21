@@ -5,7 +5,6 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Kho Sim Số Đẹp VIP</title>
     <style>
-        /* CSS: Giao diện và màu sắc */
         body { font-family: Arial, sans-serif; background-color: #f4f7f6; margin: 0; padding: 0; }
         .header { background: linear-gradient(135deg, #1e3c72 0%, #2a5298 100%); color: white; padding: 20px; text-align: center; }
         .header h1 { margin: 0; font-size: 28px; }
@@ -13,36 +12,30 @@
         
         .container { max-width: 1000px; margin: 20px auto; padding: 0 15px; }
         
-        /* Khu vực tìm kiếm và lọc */
         .controls { display: flex; gap: 10px; margin-bottom: 20px; flex-wrap: wrap; }
         .controls input, .controls select { 
             padding: 12px; font-size: 16px; border: 1px solid #ccc; border-radius: 8px; flex: 1; outline: none;
         }
         .controls input:focus, .controls select:focus { border-color: #2a5298; box-shadow: 0 0 5px rgba(42,82,152,0.3); }
 
-        /* Lưới danh sách sim */
         .sim-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(280px, 1fr)); gap: 15px; }
         
-        /* Thẻ sim đơn */
         .sim-card { background: white; padding: 20px; border-radius: 10px; box-shadow: 0 2px 10px rgba(0,0,0,0.05); text-align: center; transition: transform 0.2s; border-bottom: 4px solid #2a5298; }
         .sim-card:hover { transform: translateY(-5px); box-shadow: 0 5px 15px rgba(0,0,0,0.1); }
         .sim-number { font-size: 24px; font-weight: bold; color: #d32f2f; margin-bottom: 5px; letter-spacing: 1px; }
         .sim-carrier { display: inline-block; padding: 4px 10px; background: #e0e0e0; border-radius: 20px; font-size: 12px; font-weight: bold; margin-bottom: 10px; }
         .sim-price { font-size: 18px; color: #388e3c; font-weight: bold; margin-bottom: 15px; }
         
-        /* Trạng thái */
         .status-sold { color: #888; text-decoration: line-through; }
         .tag-sold { background: #ffebee; color: #c62828; }
         .tag-available { background: #e8f5e9; color: #2e7d32; }
 
-        /* Nút liên hệ */
         .btn-buy { display: inline-block; text-decoration: none; background: #25D366; color: white; padding: 10px 20px; border-radius: 5px; font-weight: bold; width: 80%; transition: background 0.3s; }
         .btn-buy:hover { background: #1ebe57; }
         .btn-disabled { background: #ccc; cursor: not-allowed; pointer-events: none; }
 
         .loading { text-align: center; padding: 50px; font-size: 18px; color: #666; }
         
-        /* Chân trang (Footer) */
         .footer { 
             text-align: center; 
             padding: 25px 20px; 
@@ -67,7 +60,6 @@
     </div>
 
     <div class="container">
-        <!-- Bộ lọc và Tìm kiếm -->
         <div class="controls">
             <input type="text" id="searchInput" placeholder="Nhập số cần tìm (VD: 999, 098)...">
             <select id="carrierFilter">
@@ -81,7 +73,6 @@
             </select>
         </div>
 
-        <!-- Nơi hiển thị danh sách Sim -->
         <div id="simList" class="sim-grid">
             <div class="loading">⏳ Đang tải dữ liệu sim mới nhất từ hệ thống...</div>
         </div>
@@ -102,21 +93,29 @@
                 const data = JSON.parse(jsonString);
 
                 simData = data.table.rows.map(row => {
-                    // --- ĐOẠN CODE MỚI XỬ LÝ GIÁ TIỀN CHUẨN ĐẸP ---
-                    let rawPrice = (row.c[2] && row.c[2].v !== null) ? row.c[2].v : 'Liên hệ';
-                    let displayPrice = (row.c[2] && row.c[2].f) ? row.c[2].f : String(rawPrice);
-                    
-                    if (displayPrice !== 'Liên hệ') {
-                        // Tự động chấm phân cách hàng nghìn, triệu (vd: 5000000 -> 5.000.000)
-                        if (typeof rawPrice === 'number') {
-                            displayPrice = rawPrice.toLocaleString('vi-VN');
+                    // --- XỬ LÝ LẠI TOÀN BỘ GIÁ TIỀN ---
+                    let displayPrice = 'Liên hệ';
+                    if (row.c[2] && row.c[2].v !== null && row.c[2].v !== '') {
+                        displayPrice = String(row.c[2].v).trim();
+                    }
+
+                    // Nếu giá khác chữ "Liên hệ", tiến hành phân tách và thêm VNĐ
+                    if (displayPrice.toLowerCase() !== 'liên hệ') {
+                        // Cắt bỏ hết khoảng trắng, dấu chấm, phẩy hiện có
+                        let cleanNumber = displayPrice.replace(/[.,\s]/g, '');
+                        
+                        // Nếu toàn bộ là các con số (VD: 5000000)
+                        if (/^\d+$/.test(cleanNumber)) {
+                            displayPrice = Number(cleanNumber).toLocaleString('vi-VN');
                         }
-                        // Tự động thêm chữ VNĐ vào đuôi nếu người dùng chưa nhập
-                        if (!displayPrice.toLowerCase().includes('đ') && !displayPrice.toLowerCase().includes('vnđ')) {
+
+                        // Thêm chữ VNĐ nếu chưa có
+                        let lowerPrice = displayPrice.toLowerCase();
+                        if (!lowerPrice.includes('đ') && !lowerPrice.includes('vnđ')) {
                             displayPrice += ' VNĐ';
                         }
                     }
-                    // ----------------------------------------------
+                    // ------------------------------------
 
                     return {
                         number: (row.c[0] && row.c[0].v !== null) ? String(row.c[0].v) : '',
@@ -128,7 +127,7 @@
 
                 renderSims(simData); 
             } catch (error) {
-                document.getElementById('simList').innerHTML = `<div class="loading" style="color:red"> Lỗi kết nối dữ liệu. Vui lòng kiểm tra lại SHEET ID hoặc Quyền chia sẻ của Google Sheets.</div>`;
+                document.getElementById('simList').innerHTML = `<div class="loading" style="color:red"> Lỗi kết nối dữ liệu. Vui lòng kiểm tra lại.</div>`;
                 console.error("Lỗi fetch dữ liệu:", error);
             }
         }
