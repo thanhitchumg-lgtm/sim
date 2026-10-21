@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Kho Sim VIP - Sim Số Đẹp</title>
+    <title>Kho Sim VIP</title>
     <link rel="icon" type="image/png" href="favicon.png">
     <style>
         body { font-family: Arial, sans-serif; background-color: #f4f7f6; margin: 0; padding: 0; }
@@ -25,6 +25,8 @@
         .sim-card:hover { transform: translateY(-5px); box-shadow: 0 5px 15px rgba(0,0,0,0.1); }
         .sim-number { font-size: 24px; font-weight: bold; color: #d32f2f; margin-bottom: 5px; letter-spacing: 1px; }
         .sim-carrier { display: inline-block; padding: 4px 10px; background: #e0e0e0; border-radius: 20px; font-size: 12px; font-weight: bold; margin-bottom: 10px; }
+        
+        /* Cỡ chữ giá tiền 13px */
         .sim-price { font-size: 13px; color: #388e3c; font-weight: bold; margin-bottom: 15px; }
         
         .status-sold { color: #888; text-decoration: line-through; }
@@ -37,6 +39,12 @@
 
         .loading { text-align: center; padding: 50px; font-size: 18px; color: #666; }
         
+        /* CSS cho phần phân trang */
+        .pagination { display: flex; justify-content: center; flex-wrap: wrap; gap: 8px; margin-top: 30px; }
+        .page-btn { padding: 8px 15px; border: 1px solid #2a5298; background: white; color: #2a5298; cursor: pointer; border-radius: 5px; font-weight: bold; transition: background 0.3s; }
+        .page-btn:hover { background: #e0eafc; }
+        .page-btn.active { background: #2a5298; color: white; }
+
         .footer { 
             text-align: center; 
             padding: 25px 20px; 
@@ -61,7 +69,7 @@
     </div>
 
     <div class="container">
-        <div class="controls">
+        <div class="controls" id="controls-section">
             <input type="text" id="searchInput" placeholder="Nhập số cần tìm (VD: 999, 098)...">
             <select id="carrierFilter">
                 <option value="all">-- Tất cả nhà mạng --</option>
@@ -77,6 +85,9 @@
         <div id="simList" class="sim-grid">
             <div class="loading">⏳ Đang tải dữ liệu sim mới nhất từ hệ thống...</div>
         </div>
+
+        <!-- Chỗ chứa các nút bấm phân trang (1, 2, 3...) -->
+        <div id="pagination" class="pagination"></div>
     </div>
 
     <script>
@@ -84,6 +95,9 @@
         const SHEET_URL = `https://docs.google.com/spreadsheets/d/${SHEET_ID}/gviz/tq?tqx=out:json`;
 
         let simData = []; 
+        let currentFilteredData = []; // Mảng chứa dữ liệu đang được lọc
+        let currentPage = 1;
+        const itemsPerPage = 18; // Hiển thị 18 sim / 1 trang
 
         async function fetchSimData() {
             try {
@@ -94,7 +108,6 @@
                 const data = JSON.parse(jsonString);
 
                 simData = data.table.rows.map(row => {
-                    // --- CÔNG THỨC ÉP GIÁ TIỀN CHUẨN 100% ---
                     let priceVal = row.c[2] ? row.c[2].v : null;
                     let displayPrice = 'Liên hệ';
                     
@@ -105,17 +118,12 @@
                         if (lowerVal === 'liên hệ') {
                             displayPrice = 'Liên hệ';
                         } else {
-                            // Rút trích chỉ lấy các con số
                             let onlyNumbers = strVal.replace(/\D/g, ''); 
-                            // Xóa các dấu chấm, phẩy, khoảng trắng để kiểm tra
                             let cleanStr = strVal.replace(/[.,\s]/g, '');
                             
-                            // Nếu dữ liệu nhập vào bản chất chỉ là số
                             if (onlyNumbers.length > 0 && onlyNumbers === cleanStr) {
-                                // Tự động chèn dấu chấm (.) chuẩn Việt Nam
                                 displayPrice = onlyNumbers.replace(/\B(?=(\d{3})+(?!\d))/g, ".") + ' VNĐ';
                             } else {
-                                // Nếu có nhập chữ (VD: "5 Triệu") thì giữ nguyên
                                 displayPrice = strVal;
                                 if (!lowerVal.includes('đ') && !lowerVal.includes('vnđ')) {
                                     displayPrice += ' VNĐ';
@@ -123,7 +131,6 @@
                             }
                         }
                     }
-                    // ----------------------------------------
 
                     return {
                         number: (row.c[0] && row.c[0].v !== null) ? String(row.c[0].v) : '',
@@ -133,30 +140,41 @@
                     };
                 }).filter(sim => sim.number !== ''); 
 
-                renderSims(simData); 
+                // Lần đầu tải trang, dữ liệu hiển thị chính là toàn bộ sim
+                currentFilteredData = [...simData];
+                displayPage(); 
             } catch (error) {
                 document.getElementById('simList').innerHTML = `<div class="loading" style="color:red"> Lỗi kết nối dữ liệu. Vui lòng kiểm tra lại.</div>`;
                 console.error("Lỗi fetch dữ liệu:", error);
             }
         }
 
-        function renderSims(dataToRender) {
+        // Hàm tính toán và hiển thị đúng 18 sim của trang hiện tại
+        function displayPage() {
             const listElement = document.getElementById('simList');
-            listElement.innerHTML = ''; 
+            const paginationElement = document.getElementById('pagination');
+            
+            listElement.innerHTML = '';
+            paginationElement.innerHTML = '';
 
-            if(dataToRender.length === 0) {
+            if(currentFilteredData.length === 0) {
                 listElement.innerHTML = `<div class="loading">Không tìm thấy số sim nào phù hợp!</div>`;
                 return;
             }
 
-            dataToRender.forEach(sim => {
+            // Cắt đúng 18 phần tử từ mảng dữ liệu dựa theo trang hiện tại
+            const startIndex = (currentPage - 1) * itemsPerPage;
+            const endIndex = startIndex + itemsPerPage;
+            const pageData = currentFilteredData.slice(startIndex, endIndex);
+
+            let htmlContent = '';
+            pageData.forEach(sim => {
                 const isSold = sim.status.toLowerCase().includes('đã bán');
                 const btnClass = isSold ? 'btn-buy btn-disabled' : 'btn-buy';
                 const btnText = isSold ? 'Đã bán' : 'Chat Zalo Mua Ngay';
-                
                 const zaloLink = `https://zalo.me/0965286688?text=Tôi muốn mua sim ${sim.number}`; 
                 
-                const simHtml = `
+                htmlContent += `
                     <div class="sim-card">
                         <div class="sim-carrier tag-${isSold ? 'sold' : 'available'}">${sim.carrier}</div>
                         <div class="sim-number ${isSold ? 'status-sold' : ''}">${sim.number}</div>
@@ -164,24 +182,49 @@
                         <a href="${isSold ? '#' : zaloLink}" target="_blank" class="${btnClass}">${btnText}</a>
                     </div>
                 `;
-                listElement.innerHTML += simHtml;
             });
+            
+            listElement.innerHTML = htmlContent;
+            renderPagination(); // Gọi hàm vẽ nút 1, 2, 3...
+        }
+
+        // Hàm vẽ các nút số trang
+        function renderPagination() {
+            const totalPages = Math.ceil(currentFilteredData.length / itemsPerPage);
+            const paginationElement = document.getElementById('pagination');
+
+            if (totalPages <= 1) return; // Nếu chỉ có 1 trang thì không hiện nút bấm
+
+            for (let i = 1; i <= totalPages; i++) {
+                const btn = document.createElement('button');
+                btn.className = 'page-btn' + (i === currentPage ? ' active' : '');
+                btn.innerText = i;
+                
+                // Sự kiện khi bấm vào nút chuyển trang
+                btn.onclick = () => {
+                    currentPage = i;
+                    displayPage();
+                    // Tự động cuộn màn hình lên chỗ ô tìm kiếm cho mượt
+                    document.getElementById('controls-section').scrollIntoView({ behavior: 'smooth' });
+                };
+                
+                paginationElement.appendChild(btn);
+            }
         }
 
         function filterData() {
             const searchText = document.getElementById('searchInput').value.toLowerCase().trim();
             const filterCarrier = document.getElementById('carrierFilter').value.toLowerCase();
 
-            const filteredData = simData.filter(sim => {
+            currentFilteredData = simData.filter(sim => {
                 const cleanNumber = sim.number.replace(/[\.\s]/g, ""); 
                 const matchSearch = cleanNumber.includes(searchText) || sim.number.toLowerCase().includes(searchText);
-                
                 const matchCarrier = (filterCarrier === 'all') || (sim.carrier.toLowerCase().includes(filterCarrier));
-
                 return matchSearch && matchCarrier;
             });
 
-            renderSims(filteredData);
+            currentPage = 1; // Mặc định đưa về trang 1 mỗi khi gõ tìm kiếm mới
+            displayPage();
         }
 
         document.getElementById('searchInput').addEventListener('input', filterData);
