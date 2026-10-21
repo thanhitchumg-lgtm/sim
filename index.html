@@ -41,6 +41,21 @@
         .btn-disabled { background: #ccc; cursor: not-allowed; pointer-events: none; }
 
         .loading { text-align: center; padding: 50px; font-size: 18px; color: #666; }
+        /* Chân trang (Footer) */
+        .footer { 
+            text-align: center; 
+            padding: 25px 20px; 
+            margin-top: 40px; 
+            background: linear-gradient(135deg, #1e3c72 0%, #2a5298 100%); 
+            color: white; 
+            font-size: 18px; 
+        }
+        .footer a {
+            color: #ffeb3b; /* Màu vàng nổi bật cho số điện thoại */
+            text-decoration: none;
+            font-weight: bold;
+            font-size: 22px;
+        }
     </style>
 </head>
 <body>
@@ -170,5 +185,8 @@
         window.onload = fetchSimData;
 
     </script>
+    <div class="footer">
+        Liên hệ hotline: <a href="tel:0965286688">0965.28.66.88</a>
+    </div>
 </body>
 </html>
