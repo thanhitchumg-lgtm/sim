@@ -52,7 +52,7 @@
             font-size: 18px; 
         }
         .footer a {
-            color: #ffeb3b; /* Màu vàng nổi bật cho số điện thoại */
+            color: #ffeb3b; 
             text-decoration: none;
             font-weight: bold;
             font-size: 22px;
@@ -101,12 +101,27 @@
                 const jsonString = text.substring(text.indexOf('{'), text.lastIndexOf('}') + 1);
                 const data = JSON.parse(jsonString);
 
-                // ĐOẠN CODE NÀY ĐÃ ĐƯỢC SỬA LỖI TRỐNG (NULL)
                 simData = data.table.rows.map(row => {
+                    // --- ĐOẠN CODE MỚI XỬ LÝ GIÁ TIỀN CHUẨN ĐẸP ---
+                    let rawPrice = (row.c[2] && row.c[2].v !== null) ? row.c[2].v : 'Liên hệ';
+                    let displayPrice = (row.c[2] && row.c[2].f) ? row.c[2].f : String(rawPrice);
+                    
+                    if (displayPrice !== 'Liên hệ') {
+                        // Tự động chấm phân cách hàng nghìn, triệu (vd: 5000000 -> 5.000.000)
+                        if (typeof rawPrice === 'number') {
+                            displayPrice = rawPrice.toLocaleString('vi-VN');
+                        }
+                        // Tự động thêm chữ VNĐ vào đuôi nếu người dùng chưa nhập
+                        if (!displayPrice.toLowerCase().includes('đ') && !displayPrice.toLowerCase().includes('vnđ')) {
+                            displayPrice += ' VNĐ';
+                        }
+                    }
+                    // ----------------------------------------------
+
                     return {
                         number: (row.c[0] && row.c[0].v !== null) ? String(row.c[0].v) : '',
                         carrier: (row.c[1] && row.c[1].v !== null) ? String(row.c[1].v) : '',
-                        price: (row.c[2] && row.c[2].v !== null) ? String(row.c[2].v) : 'Liên hệ',
+                        price: displayPrice,
                         status: (row.c[3] && row.c[3].v !== null) ? String(row.c[3].v) : 'Còn hàng'
                     };
                 }).filter(sim => sim.number !== ''); 
